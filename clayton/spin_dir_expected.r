@@ -6,6 +6,8 @@ library(xgboost)
 data <- read_csv("Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/2021_data.csv")
 data_2022 <- read_csv("Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/2022_data.csv")
 data_2023 <- read_csv("Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/2023_MLB_Seaspm.csv")
+height_df <- read_csv("Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/player_heights.csv")
+
 savant <- data %>% 
     mutate(pitch_type_condensed = ifelse(pitch_type == "FF", "FF", 
     ifelse(pitch_type == "FT", "SI",  
@@ -45,14 +47,16 @@ savant_2023 <- data_2023 %>%
 
 savant_clean  <- savant %>%
     select(pitcher, player_name, pitch_id_raw, pitch_type_condensed, p_throws, 
-    vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed,
+    vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed, release_pos_z,
+    vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed, 
     release_pos_x, pfx_z, pfx_x, release_spin_rate, effective_speed) %>%
     filter(pitch_type_condensed %in% c("FF", "SI", "CT")) %>%
     filter(!is.na(spin_axis) & !is.na(release_speed))
 
 savant_clean_2022 <- savant_2022 %>%
     select(pitcher, player_name, pitch_id_raw, pitch_type_condensed, p_throws,
-    vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed,
+    vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed, release_pos_z,
+    vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed, 
     release_pos_x, pfx_z, pfx_x, release_spin_rate, effective_speed) %>%
     filter(pitch_type_condensed %in% c("FF", "SI", "CT")) %>%
     filter(!is.na(spin_axis) & !is.na(release_speed))
@@ -60,82 +64,64 @@ savant_clean_2022 <- savant_2022 %>%
 
 savant_clean_2023 <- savant_2023 %>%
     select(pitcher, player_name, pitch_id_raw, pitch_type_condensed, p_throws, 
-    vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed,
+    vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed, release_pos_z,
     release_pos_x, pfx_z, pfx_x, release_spin_rate, effective_speed) %>%
     filter(pitch_type_condensed %in% c("FF", "SI", "CT")) %>%
     filter(!is.na(spin_axis) & !is.na(release_speed))
 
-# Convert the vectors to data frames if they are not already
-pitcher_df1 <- data.frame(name = savant_clean$pitcher)
-pitcher_df2 <- data.frame(name = savant_clean_2023$pitcher)
-pitcher_df3 <- data.frame(name = savant_clean_2022$pitcher)
-
-bind_rows(pitcher_df1, pitcher_df2, pitcher_df3) -> all_names
-
-# Create a list of unique names
-unique_names = unique(all_names$name)
-results <- list()
-# Loop through each unique name (assuming they are MLBAMIDs) and retrieve player information
-for (i in seq_along(unique_names)) {
-  player_info <- mlb_people(person_ids = unique_names[i])
-  results[[i]] <- player_info
-  print(player_info)
-}
-
-
-# Use rbind.fill to combine the list of data frames
-combined_results <- rbindlist(results, fill = TRUE)
-
-height = combined_results %>%
-select(id, height)
-
-convert_height_to_decimal <- function(height_str) {
-  # Split the string on the apostrophe and space ' '
-  parts <- strsplit(height_str, "'\\s*")[[1]]
-  
-  # Extract feet and inches parts
-  feet <- as.numeric(parts[1])
-  inches <- as.numeric(sub("\"", "", parts[2])) # Remove the inch symbol and convert to numeric
-  
-  # Convert inches to a fraction of a foot and add to feet
-  total_height <- feet + (inches / 12)
-  
-  return(total_height)
-}
-
-height$height_numeric <- round(sapply(height$height, convert_height_to_decimal), 2)
-
-
-result_df <- height %>%
-  select(id, height_numeric)
-
-result_df <- as.data.frame(result_df)
-
-write.csv2(result_df, "Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/player_heights.csv")
-
 arm_slot <- savant_clean %>%
-  left_join(result_df, by = c("pitcher" = "id")) %>%
+left_join(height_df, by = c("pitcher" = "id")) %>%
   mutate(
-    height_ratio = release_pos_x / height_numeric,
-    pfx_x_cor = if_else(p_throws == 'L', pfx_x * -1, pfx_x)
+    height_ratio = release_pos_z / height_numeric,
+    pfx_x_cor = if_else(p_throws == 'L', pfx_x * -1, pfx_x),
+    # Calculate mean and standard deviation of height_ratio
+    mean_height_ratio = mean(height_ratio, na.rm = TRUE),
+    sd_height_ratio = sd(height_ratio, na.rm = TRUE),
+    # Categorize arm_slot based on standard deviation from the mean
+    arm_slot = case_when(
+      height_ratio < (mean_height_ratio - sd_height_ratio) ~ 0,
+      between(height_ratio, mean_height_ratio - sd_height_ratio, mean_height_ratio + sd_height_ratio) ~ 2,
+      height_ratio > (mean_height_ratio + sd_height_ratio) ~ 3,
+      TRUE ~ 1
+    )
   ) %>%
-  select(-pfx_x, -p_throws)
+  select(-pfx_x, -p_throws, -mean_height_ratio, -sd_height_ratio) 
 
 arm_slot_2022 <- savant_clean_2023 %>%
-  left_join(result_df, by = c("pitcher" = "id")) %>%
+left_join(height_df, by = c("pitcher" = "id")) %>%
   mutate(
-    height_ratio = release_pos_x / height_numeric,
-    pfx_x_cor = if_else(p_throws == 'L', pfx_x * -1, pfx_x)
+    height_ratio = release_pos_z / height_numeric,
+    pfx_x_cor = if_else(p_throws == 'L', pfx_x * -1, pfx_x),
+    # Calculate mean and standard deviation of height_ratio
+    mean_height_ratio = mean(height_ratio, na.rm = TRUE),
+    sd_height_ratio = sd(height_ratio, na.rm = TRUE),
+    # Categorize arm_slot based on standard deviation from the mean
+    arm_slot = case_when(
+      height_ratio < (mean_height_ratio - sd_height_ratio) ~ 0,
+      between(height_ratio, mean_height_ratio - sd_height_ratio, mean_height_ratio + sd_height_ratio) ~ 2,
+      height_ratio > (mean_height_ratio + sd_height_ratio) ~ 3,
+      TRUE ~ 1
+    )
   ) %>%
-  select(-pfx_x, -p_throws)
+  select(-pfx_x, -p_throws, -mean_height_ratio, -sd_height_ratio) 
 
 arm_slot_2023 <- savant_clean_2023 %>%
-  left_join(result_df, by = c("pitcher" = "id")) %>%
+left_join(height_df, by = c("pitcher" = "id")) %>%
   mutate(
-    height_ratio = release_pos_x / height_numeric,
-    pfx_x_cor = if_else(p_throws == 'L', pfx_x * -1, pfx_x)
+    height_ratio = release_pos_z / height_numeric,
+    pfx_x_cor = if_else(p_throws == 'L', pfx_x * -1, pfx_x),
+    # Calculate mean and standard deviation of height_ratio
+    mean_height_ratio = mean(height_ratio, na.rm = TRUE),
+    sd_height_ratio = sd(height_ratio, na.rm = TRUE),
+    # Categorize arm_slot based on standard deviation from the mean
+    arm_slot = case_when(
+      height_ratio < (mean_height_ratio - sd_height_ratio) ~ 0,
+      between(height_ratio, mean_height_ratio - sd_height_ratio, mean_height_ratio + sd_height_ratio) ~ 2,
+      height_ratio > (mean_height_ratio + sd_height_ratio) ~ 3,
+      TRUE ~ 1
+    )
   ) %>%
-  select(-pfx_x, -p_throws)
+  select(-pfx_x, -p_throws, -mean_height_ratio, -sd_height_ratio) 
 
 armslots <- rbind(arm_slot_2022, arm_slot_2023)
 
@@ -207,20 +193,20 @@ colnames(predictions_df) <- c("predictions", "actual")
 # Plot the predictions vs. the actual values
 predictions_df %>%
   ggplot(aes(x = actual, y = predictions)) +
-  geom_point(alpha = .06) +
-  geom_smooth(method = "loess", se = TRUE) + # Change to loess if non-linear
+  geom_point(alpha = .06, size = 4) +
+  geom_smooth(method = "lm", se = TRUE, linewidth = 2) + 
   labs(x = "Actual", y = "Predicted", title = "Predicted vs. Actual Spin Direction") +
   theme_minimal() +
   theme(
-    plot.title = element_text(size = 20, face = "bold"),
-    axis.title = element_text(size = 14),
-    axis.text = element_text(size = 12)
+    plot.title = element_text(size = 30, face = "bold"),
+    axis.title = element_text(size = 28),
+    axis.text = element_text(size = 24)
   )
 # Make predictions
 test_predictions <- predict(xgb_model, as.matrix(test_data %>% select(-spin_axis)))
 
 # Combine the predictions with the metadata
-test_data_with_predictions <- bind_cols(test_metadata, test_data, data.frame(spin_dir_predicted = test_predictions))
+test_data_with_predictions <- bind_cols(test_metadata, test_data, data.frame(spin_axis_predicted = test_predictions))
 
 big_data <- test_data_with_predictions %>%
     mutate(
@@ -231,8 +217,7 @@ big_data <- test_data_with_predictions %>%
 
 # Specify file paths for saving CSV files
 filepath <- "Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/"
-filename <- "2022&3_spindir_predictions.csv"
+filename <- "2022&3_spin_axis_predictions.csv"
 
 # Save the data frame as a CSV file
 write_csv(big_data, paste0(filepath, filename))
-

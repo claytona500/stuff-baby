@@ -8,9 +8,9 @@ data_2022 <- read_csv("Y:/departments/research_and_development/baseball_operatio
 data_2023 <- read_csv("Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/2023_MLB_Seaspm.csv")
 
 # Convert the vectors to data frames if they are not already
-pitcher_df1 <- data.frame(name = data$pitcher)
-pitcher_df2 <- data.frame(name = data_2022$pitcher)
-pitcher_df3 <- data.frame(name = data_2023$pitcher)
+pitcher_df1 <- data.frame(name = savant_clean$pitcher)
+pitcher_df2 <- data.frame(name = savant_clean_2023$pitcher)
+pitcher_df3 <- data.frame(name = savant_clean_2022$pitcher)
 
 bind_rows(pitcher_df1, pitcher_df2, pitcher_df3) -> all_names
 
@@ -23,6 +23,7 @@ for (i in seq_along(unique_names)) {
   results[[i]] <- player_info
   print(player_info)
 }
+
 
 # Use rbind.fill to combine the list of data frames
 combined_results <- rbindlist(results, fill = TRUE)
@@ -46,9 +47,11 @@ convert_height_to_decimal <- function(height_str) {
 
 height$height_numeric <- round(sapply(height$height, convert_height_to_decimal), 2)
 
+
 result_df <- height %>%
   select(id, height_numeric)
 
 result_df <- as.data.frame(result_df)
 
-write.csv2(result_df, "Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/player_heights.csv")
+
+write.csv(result_df, "Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/player_heights.csv")
