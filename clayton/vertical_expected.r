@@ -51,7 +51,7 @@ savant_clean  <- savant %>%
     vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed, 
     release_pos_x, pfx_z, pfx_x, release_spin_rate, effective_speed) %>%
     filter(pitch_type_condensed %in% c("FF", "SI", "CT")) %>%
-    filter(!is.na(spin_axis) & !is.na(release_speed))
+    filter(!is.na(pfx_z) & !is.na(release_speed))
 
 savant_clean_2022 <- savant_2022 %>%
     select(pitcher, player_name, pitch_id_raw, pitch_type_condensed, p_throws,
@@ -59,7 +59,7 @@ savant_clean_2022 <- savant_2022 %>%
     vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed, 
     release_pos_x, pfx_z, pfx_x, release_spin_rate, effective_speed) %>%
     filter(pitch_type_condensed %in% c("FF", "SI", "CT")) %>%
-    filter(!is.na(spin_axis) & !is.na(release_speed))
+    filter(!is.na(pfx_z) & !is.na(release_speed))
 
 
 savant_clean_2023 <- savant_2023 %>%
@@ -67,7 +67,7 @@ savant_clean_2023 <- savant_2023 %>%
     vx0, vy0, vz0, ay, ax, az, spin_axis, release_pos_y, release_speed, release_pos_z,
     release_pos_x, pfx_z, pfx_x, release_spin_rate, effective_speed) %>%
     filter(pitch_type_condensed %in% c("FF", "SI", "CT")) %>%
-    filter(!is.na(spin_axis) & !is.na(release_speed))
+    filter(!is.na(pfx_z) & !is.na(release_speed))
 
 arm_slot <- savant_clean %>%
 left_join(height_df, by = c("pitcher" = "id")) %>%
@@ -87,7 +87,7 @@ left_join(height_df, by = c("pitcher" = "id")) %>%
   ) %>%
   select(-pfx_x, -p_throws, -mean_height_ratio, -sd_height_ratio) 
 
-arm_slot_2022 <- savant_clean_2023 %>%
+arm_slot_2022 <- savant_clean_2022 %>%
 left_join(height_df, by = c("pitcher" = "id")) %>%
   mutate(
     height_ratio = release_pos_z / height_numeric,
