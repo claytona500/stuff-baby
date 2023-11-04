@@ -5,6 +5,8 @@ library(xgboost)
 # Load data
 data <- read_csv("Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/2022_data.csv")
 data_2023 <- read_csv("Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/2023_MLB_Seaspm.csv")
+height_df <- read_csv("Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/player_heights.csv")
+
 savant <- data %>% 
     mutate(pitch_type_condensed = ifelse(pitch_type == "FF", "FF", 
     ifelse(pitch_type == "FT", "SI",  
@@ -44,51 +46,8 @@ savant_clean_2023 <- savant_2023 %>%
     filter(pitch_type_condensed %in% c("FF", "SI", "CT")) %>%
     filter(!is.na(pfx_x) & !is.na(release_speed))
 
-# Convert the vectors to data frames if they are not already
-pitcher_df1 <- data.frame(name = savant_clean$pitcher)
-pitcher_df2 <- data.frame(name = savant_clean_2023$pitcher)
-
-bind_rows(pitcher_df1, pitcher_df2) -> all_names
-
-# Create a list of unique names
-unique_names = unique(all_names$name)
-
-# Loop through each unique name (assuming they are MLBAMIDs) and retrieve player information
-for (i in seq_along(unique_names)) {
-  player_info <- mlb_people(person_ids = unique_names[i])
-  results[[i]] <- player_info
-  print(player_info)
-}
-
-# Use rbind.fill to combine the list of data frames
-combined_results <- rbindlist(results, fill = TRUE)
-
-height = combined_results %>%
-select(id, height)
-
-convert_height_to_decimal <- function(height_str) {
-  # Split the string on the apostrophe and space ' '
-  parts <- strsplit(height_str, "'\\s*")[[1]]
-  
-  # Extract feet and inches parts
-  feet <- as.numeric(parts[1])
-  inches <- as.numeric(sub("\"", "", parts[2])) # Remove the inch symbol and convert to numeric
-  
-  # Convert inches to a fraction of a foot and add to feet
-  total_height <- feet + (inches / 12)
-  
-  return(total_height)
-}
-
-height$height_numeric <- round(sapply(height$height, convert_height_to_decimal), 2)
-
-result_df <- height %>%
-  select(id, height_numeric)
-
-result_df <- as.data.frame(result_df)
-
 arm_slot <- savant_clean %>%
-  left_join(result_df, by = c("pitcher" = "id")) %>%
+  left_join(height_df, by = c("pitcher" = "id")) %>%
   mutate(
     height_ratio = release_pos_x / height_numeric,
     pfx_x_cor = if_else(p_throws == 'L', pfx_x * -1, pfx_x)
@@ -96,7 +55,7 @@ arm_slot <- savant_clean %>%
   select(-pfx_x, -p_throws)
 
 arm_slot_2023 <- savant_clean_2023 %>%
-  left_join(result_df, by = c("pitcher" = "id")) %>%
+  left_join(height_df, by = c("pitcher" = "id")) %>%
   mutate(
     height_ratio = release_pos_x / height_numeric,
     pfx_x_cor = if_else(p_throws == 'L', pfx_x * -1, pfx_x)
