@@ -127,10 +127,10 @@ test_data <- arm_slot_features_2023
 test_metadata <- arm_slot_metadata_2023
 
 # Prepare matrices for XGBoost
-train_matrix <- xgb.DMatrix(data = as.matrix(train_data %>% select(-pfx_x_cor)), 
-                            label = train_data$pfx_x_cor)
-test_matrix <- xgb.DMatrix(data = as.matrix(test_data %>% select(-pfx_x_cor)), 
-                           label = test_data$pfx_x_cor)
+train_matrix <- xgb.DMatrix(data = as.matrix(train_data %>% select(-pfx_z)), 
+                            label = train_data$pfx_z)
+test_matrix <- xgb.DMatrix(data = as.matrix(test_data %>% select(-pfx_z)), 
+                           label = test_data$pfx_z)
 
 # Define parameters
 params <- list(
@@ -155,14 +155,14 @@ xgb_model <- xgb.train(
 )
 
 # Make predictions
-predictions <- predict(xgb_model, as.matrix(test_data %>% select(-pfx_x_cor)))
+predictions <- predict(xgb_model, as.matrix(test_data %>% select(-pfx_z)))
 test_metadata <- bind_cols(test_metadata, data.frame(pfx_x_predictions = predictions))
 
 # Calculate the RMSE
 rmse <- sqrt(mean((predictions - test_data$pfx_z)^2))
 
 # Create a data frame with the predictions and the actual values
-predictions_df <- data.frame(predictions, test_data$pfx_x_cor)
+predictions_df <- data.frame(predictions, test_data$pfx_z)
 
 # Rename the columns
 colnames(predictions_df) <- c("predictions", "actual")
@@ -176,21 +176,21 @@ predictions_df %>%
   theme_minimal()
 
 # Make predictions
-test_predictions <- predict(xgb_model, as.matrix(test_data %>% select(-pfx_x_cor)))
+test_predictions <- predict(xgb_model, as.matrix(test_data %>% select(-pfx_z)))
 
 # Combine the predictions with the metadata
 test_data_with_predictions <- bind_cols(test_metadata, test_data, data.frame(pfx_x_predicted = test_predictions))
 
 big_data <- test_data_with_predictions %>%
     mutate(
-        pfx_x_diff = pfx_x_cor - pfx_x_predicted,
+        pfx_x_diff = pfx_z - pfx_x_predicted,
         pfx_x_diff_abs = abs(pfx_x_diff)
     ) %>%
-    select(pitch_id_raw, pfx_x_cor, pfx_x_predicted, pfx_x_diff, pfx_x_diff_abs)
+    select(pitch_id_raw, pfx_z, pfx_x_predicted, pfx_x_diff, pfx_x_diff_abs)
 
 # Specify file paths for saving CSV files
 filepath <- "Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/"
-filename <- "2023_pfx_x_predictions.csv"
+filename <- "2023_pfx_z_predictions.csv"
 
 # Save the data frame as a CSV file
 write_csv(big_data, paste0(filepath, filename))
