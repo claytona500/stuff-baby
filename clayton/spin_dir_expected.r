@@ -87,7 +87,7 @@ left_join(height_df, by = c("pitcher" = "id")) %>%
   ) %>%
   select(-pfx_x, -p_throws, -mean_height_ratio, -sd_height_ratio) 
 
-arm_slot_2022 <- savant_clean_2023 %>%
+arm_slot_2022 <- savant_clean_2022 %>%
 left_join(height_df, by = c("pitcher" = "id")) %>%
   mutate(
     height_ratio = release_pos_z / height_numeric,
@@ -213,7 +213,7 @@ big_data <- test_data_with_predictions %>%
         spin_axis_diff = spin_axis - spin_axis_predicted,
         spin_axis_diff_abs = abs(spin_axis)
     ) %>%
-    select(pitch_id_raw, spin_axis, spin_axis_predicted, spin_axis_diff, spin_axis_diff_abs)
+    select(pitch_id_raw, spin_axis, spin_axis_predicted, spin_axis_diff, spin_axis_diff_abs,arm_slot, height_ratio)
 
 # Specify file paths for saving CSV files
 filepath <- "Y:/departments/research_and_development/baseball_operations/clayton_goodiez/csv/"
